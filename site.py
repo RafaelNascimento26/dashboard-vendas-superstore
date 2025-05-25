@@ -2,33 +2,62 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import gspread
+# import gspread # Mantenho comentado. Descomente se for usar Google Sheets como fonte principal
 
-# Configuração da página
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")
 
-@st.cache_data(ttl=600)
+# --- 2. CARREGAMENTO DOS DADOS (APENAS UMA VEZ) ---
+@st.cache_data(ttl=600) # Armazena em cache para performance
 def carregar_dados():
-    # Autoriza o gspread com as credenciais guardadas nos Secrets do Streamlit
-    # O st.secrets já entende o formato do JSON que você configurou.
-    gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
+    """
+    Carrega os dados brutos da Superstore do arquivo Excel.
+    Certifique-se de que o arquivo 'dataset_superstore.xlsx' está em uma pasta 'data'.
+    Ajuste o 'sheet_name' para o nome da aba que contém seus dados brutos,
+    geralmente 'Sheet1' ou 'Orders'.
+    """
+    try:
+        # Se você estivesse usando Google Sheets:
+        # gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
+        # spreadsheet = gc.open(st.secrets["connections"]["gsheets"]["spreadsheet"])
+        # worksheet = spreadsheet.sheet1
+        # dados = worksheet.get_all_records()
+        # df = pd.DataFrame(dados)
 
-    # Abre a planilha pelo nome que está nos seus Secrets e seleciona a primeira aba
-    spreadsheet = gc.open(st.secrets["connections"]["gsheets"]["spreadsheet"])
-    worksheet = spreadsheet.sheet1 # .sheet1 pega a primeira aba
+        # Se for do Excel local (a abordagem que estamos seguindo):
+        df = pd.read_excel('data/dataset_superstore.xlsx', sheet_name='Sheet1') # AJUSTE AQUI O NOME DA ABA SE FOR DIFERENTE
 
-    # Pega todos os valores da planilha e converte para um DataFrame do Pandas
-    dados = worksheet.get_all_records()
-    df = pd.DataFrame(dados)
+        # CONVERSÃO DE TIPOS DE DADOS - CRUCIAL PARA CÁLCULOS!
+        # Ajuste os nomes das colunas conforme seu Excel
+        if 'Order Date' in df.columns:
+            df['Order Date'] = pd.to_datetime(df['Order Date'])
+        if 'Sales' in df.columns:
+            df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce')
+        if 'Profit' in df.columns:
+            df['Profit'] = pd.to_numeric(df['Profit'], errors='coerce')
+        if 'Discount' in df.columns:
+            df['Discount'] = pd.to_numeric(df['Discount'], errors='coerce')
+        if 'Shipping Cost' in df.columns: # Exemplo, se você tiver uma coluna de custo de envio
+            df['Shipping Cost'] = pd.to_numeric(df['Shipping Cost'], errors='coerce')
+        if 'Ship Date' in df.columns:
+            df['Ship Date'] = pd.to_datetime(df['Ship Date'], errors='coerce')
 
-    return df
+        # Remover linhas com valores nulos que podem impactar cálculos
+        df.dropna(subset=['Sales', 'Profit'], inplace=True)
 
-# O resto do seu código continua igual
-# Carrega os dados
-dataset_superstore = carregar_dados()
+        return df
+    except FileNotFoundError:
+        st.error("Erro: O arquivo 'data/dataset_superstore.xlsx' não foi encontrado. Certifique-se de que o arquivo está na pasta 'data' e foi adicionado ao Git.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Erro ao carregar os dados: {e}")
+        st.stop()
 
+# Carrega os dados brutos
+# Este será o DataFrame base para todos os seus cálculos e análises
+raw_superstore_data = carregar_dados()
 
-# --- FUNÇÕES AUXILIARES ---
+# --- 3. FUNÇÕES AUXILIARES ---
 def formatar_numero(valor, prefixo='R$'):
     return f"{prefixo} {valor:,.2f}"
 
@@ -39,29 +68,32 @@ def formatar_percentual(valor):
 def estilizar_dataframe(df, colunas_moeda, colunas_percentual):
     format_dict = {}
     for col in colunas_moeda:
-        format_dict[col] = lambda x: formatar_numero(x)
+        if col in df.columns: # Garante que a coluna existe no DataFrame
+            format_dict[col] = lambda x: formatar_numero(x)
     for col in colunas_percentual:
-        format_dict[col] = lambda x: formatar_percentual(x)
+        if col in df.columns: # Garante que a coluna existe no DataFrame
+            format_dict[col] = lambda x: formatar_percentual(x)
 
     styled_df = df.style.format(format_dict)
     
-    if 'profit' in df.columns:
-        styled_df = styled_df.applymap(lambda v: 'color: red' if v < 0 else 'color: green', subset=['profit'])
-    if 'profitMargin' in df.columns:
-         styled_df = styled_df.applymap(lambda v: 'color: red' if v < 0 else 'color: green', subset=['profitMargin'])
+    # Aplica formatação condicional para lucro e margem de lucro (se as colunas existirem)
+    if 'Lucro' in df.columns:
+        styled_df = styled_df.applymap(lambda v: 'color: red' if v < 0 else 'color: green', subset=['Lucro'])
+    if 'Margem Lucro' in df.columns: # Ajustado para o nome que você usará no DataFrame
+        styled_df = styled_df.applymap(lambda v: 'color: red' if v < 0 else 'color: green', subset=['Margem Lucro'])
 
     return styled_df
 
-# --- TÍTULO ---
+# --- 4. TÍTULO E INTRODUÇÃO ---
 st.title("Dashboard Interativo da Superstore")
 st.markdown("Uma análise visual dos principais insights do relatório, agora construída com Python, Streamlit e Plotly.")
 
-# --- ABAS DE NAVEGAÇÃO ---
+# --- 5. ABAS DE NAVEGAÇÃO ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "Visão Geral", "Produtos", "Geográfica", "Clientes", "Descontos", "Envio", "Recomendações"
 ])
 
-# --- ABA 1: VISÃO GERAL ---
+# --- 6. ABA 1: VISÃO GERAL ---
 with tab1:
     st.header("Visão Geral do Desempenho")
     st.markdown("""
@@ -69,33 +101,40 @@ with tab1:
     lucro total e margem de lucro geral. Além disso, exploramos as tendências de vendas e lucro ao longo dos anos.
     """)
     
-    superstore_data = pd.read_excel('data/dataset_superstore.xlsx')
-    
-    st.write("Colunas disponíveis no superstore_data:")
-    st.write(superstore_data.columns)
+    # KPIs Calculados a partir dos dados brutos
+    total_sales = raw_superstore_data['Sales'].sum()
+    total_profit = raw_superstore_data['Profit'].sum()
+    overall_profit_margin = (total_profit / total_sales) * 100 if total_sales != 0 else 0
 
-    # KPIs
-    kpi_data = superstore_data['visaoGeral']
     col1, col2, col3 = st.columns(3)
-    col1.metric("Vendas Totais", formatar_numero(kpi_data['totalSales']))
-    col2.metric("Lucro Total", formatar_numero(kpi_data['totalProfit']))
-    col3.metric("Margem de Lucro Geral", formatar_percentual(kpi_data['overallProfitMargin']))
+    col1.metric("Vendas Totais", formatar_numero(total_sales))
+    col2.metric("Lucro Total", formatar_numero(total_profit))
+    col3.metric("Margem de Lucro Geral", formatar_percentual(overall_profit_margin))
 
     st.markdown("---")
     
     # Gráfico de Desempenho Anual
     st.subheader("Desempenho Anual")
-    yearly_df = kpi_data['yearlyPerformance']
     
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=yearly_df['Ano'], y=yearly_df['Vendas'], mode='lines+markers', name='Vendas'))
-    fig.add_trace(go.Scatter(x=yearly_df['Ano'], y=yearly_df['Lucro'], mode='lines+markers', name='Lucro'))
-    
-    fig.update_layout(title="Vendas e Lucro por Ano", xaxis_title="Ano", yaxis_title="Valor (R$)")
-    st.plotly_chart(fig, use_container_width=True)
+    # Crie a coluna 'Ano' a partir da 'Order Date'
+    if 'Order Date' in raw_superstore_data.columns:
+        yearly_df = raw_superstore_data.groupby(raw_superstore_data['Order Date'].dt.year).agg(
+            Vendas=('Sales', 'sum'),
+            Lucro=('Profit', 'sum')
+        ).reset_index()
+        yearly_df.rename(columns={'Order Date': 'Ano'}, inplace=True) # Renomeia a coluna gerada pelo groupby
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=yearly_df['Ano'], y=yearly_df['Vendas'], mode='lines+markers', name='Vendas'))
+        fig.add_trace(go.Scatter(x=yearly_df['Ano'], y=yearly_df['Lucro'], mode='lines+markers', name='Lucro'))
+        
+        fig.update_layout(title="Vendas e Lucro por Ano", xaxis_title="Ano", yaxis_title="Valor (R$)")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Coluna 'Order Date' não encontrada para calcular o desempenho anual.")
 
 
-# --- ABA 2: PRODUTOS ---
+# --- 7. ABA 2: PRODUTOS ---
 with tab2:
     st.header("Desempenho de Produtos")
     st.markdown("""
@@ -103,42 +142,58 @@ with tab2:
     O objetivo é identificar quais produtos são os mais rentáveis e quais podem estar impactando negativamente a lucratividade.
     """)
     
-    produtos_data = superstore_data['produtos']
-    
-    # Gráfico de Desempenho por Categoria
+    # Desempenho por Categoria
     st.subheader("Desempenho por Categoria")
-    category_df = produtos_data['categoryPerformance']
-    fig = px.bar(category_df, x='category', y=['sales', 'profit'], barmode='group',
-                 labels={'value': 'Valor (R$)', 'category': 'Categoria'},
-                 title="Vendas vs. Lucro por Categoria",
-                 color_discrete_map={'sales': '#1f77b4', 'profit': '#2ca02c'})
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(estilizar_dataframe(category_df.rename(columns={
-        'category': 'Categoria', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
-    }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    if 'Category' in raw_superstore_data.columns:
+        category_df = raw_superstore_data.groupby('Category').agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum')
+        ).reset_index()
+        category_df['profitMargin'] = (category_df['profit'] / category_df['sales']) * 100
+        
+        fig = px.bar(category_df, x='Category', y=['sales', 'profit'], barmode='group',
+                     labels={'value': 'Valor (R$)', 'Category': 'Categoria'},
+                     title="Vendas vs. Lucro por Categoria",
+                     color_discrete_map={'sales': '#1f77b4', 'profit': '#2ca02c'})
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(estilizar_dataframe(category_df.rename(columns={
+            'Category': 'Categoria', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
+        }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    else:
+        st.warning("Coluna 'Category' não encontrada para análise de produtos por categoria.")
 
     st.markdown("---")
 
-    # Gráfico de Lucro por Subcategoria
+    # Lucro por Subcategoria
     st.subheader("Lucro por Subcategoria (Destaques)")
-    subcategory_df = produtos_data['subCategoryProfit']
-    subcategory_df['Cor'] = ['green' if x > 0 else 'red' for x in subcategory_df['profit']]
-    
-    fig = px.bar(subcategory_df.sort_values('profit', ascending=True), 
-                 x='profit', y='subCategory', orientation='h', 
-                 title="Lucro por Subcategoria",
-                 labels={'profit': 'Lucro (R$)', 'subCategory': 'Subcategoria'})
-    fig.update_traces(marker_color=subcategory_df.sort_values('profit', ascending=True)['Cor'])
-    st.plotly_chart(fig, use_container_width=True)
+    if 'Sub-Category' in raw_superstore_data.columns:
+        subcategory_profit_df = raw_superstore_data.groupby('Sub-Category').agg(
+            profit=('Profit', 'sum')
+        ).reset_index()
+        subcategory_profit_df['Cor'] = ['green' if x >= 0 else 'red' for x in subcategory_profit_df['profit']]
+        
+        fig = px.bar(subcategory_profit_df.sort_values('profit', ascending=True), 
+                     x='profit', y='Sub-Category', orientation='h', 
+                     title="Lucro por Subcategoria",
+                     labels={'profit': 'Lucro (R$)', 'Sub-Category': 'Subcategoria'})
+        fig.update_traces(marker_color=subcategory_profit_df.sort_values('profit', ascending=True)['Cor'])
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Subcategorias com Prejuízo")
-    loss_df = produtos_data['lossSubCategoryTable']
-    st.dataframe(estilizar_dataframe(loss_df.rename(columns={
-        'category': 'Categoria', 'subCategory': 'Subcategoria', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
-    }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+        st.subheader("Subcategorias com Prejuízo")
+        # Filtra subcategorias com lucro negativo e calcula o desempenho
+        loss_subcategories_df = raw_superstore_data[raw_superstore_data['Profit'] < 0].groupby(['Category', 'Sub-Category']).agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum')
+        ).reset_index()
+        loss_subcategories_df['profitMargin'] = (loss_subcategories_df['profit'] / loss_subcategories_df['sales']) * 100 if not loss_subcategories_df.empty else 0 # Evita divisão por zero se vazio
+        
+        st.dataframe(estilizar_dataframe(loss_subcategories_df.rename(columns={
+            'Category': 'Categoria', 'Sub-Category': 'Subcategoria', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
+        }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    else:
+        st.warning("Coluna 'Sub-Category' não encontrada para análise de produtos por subcategoria.")
 
-
-# --- ABA 3: GEOGRÁFICA ---
+# --- 8. ABA 3: GEOGRÁFICA ---
 with tab3:
     st.header("Análise Geográfica")
     st.markdown("""
@@ -146,47 +201,67 @@ with tab3:
     identificando onde a empresa é mais forte e onde existem oportunidades de melhoria.
     """)
 
-    geo_data = superstore_data['geografica']
-
     # Desempenho por Região
     st.subheader("Desempenho por Região")
-    region_df = geo_data['regionPerformance']
-    fig = px.bar(region_df, x='region', y=['sales', 'profit'],
-                 barmode='group', title="Vendas vs. Lucro por Região",
-                 labels={'value': 'Valor (R$)', 'region': 'Região'})
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(estilizar_dataframe(region_df.rename(columns={
-        'region': 'Região', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
-    }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    if 'Region' in raw_superstore_data.columns:
+        region_df = raw_superstore_data.groupby('Region').agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum')
+        ).reset_index()
+        region_df['profitMargin'] = (region_df['profit'] / region_df['sales']) * 100
+        
+        fig = px.bar(region_df, x='Region', y=['sales', 'profit'],
+                     barmode='group', title="Vendas vs. Lucro por Região",
+                     labels={'value': 'Valor (R$)', 'Region': 'Região'})
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(estilizar_dataframe(region_df.rename(columns={
+            'Region': 'Região', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
+        }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    else:
+        st.warning("Coluna 'Region' não encontrada para análise geográfica.")
 
     st.markdown("---")
 
     # Estados com Prejuízo
     st.subheader("Estados com Prejuízo")
-    loss_states_df = geo_data['lossStates']
-    st.dataframe(estilizar_dataframe(loss_states_df.rename(columns={
-        'state': 'Estado', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
-    }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
-    
-# --- ABA 4: CLIENTES ---
+    if 'State' in raw_superstore_data.columns:
+        loss_states_df = raw_superstore_data[raw_superstore_data['Profit'] < 0].groupby('State').agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum')
+        ).reset_index()
+        loss_states_df['profitMargin'] = (loss_states_df['profit'] / loss_states_df['sales']) * 100 if not loss_states_df.empty else 0
+        
+        st.dataframe(estilizar_dataframe(loss_states_df.rename(columns={
+            'State': 'Estado', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
+        }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    else:
+        st.warning("Coluna 'State' não encontrada para análise geográfica.")
+        
+# --- 9. ABA 4: CLIENTES ---
 with tab4:
     st.header("Análise de Clientes")
     st.markdown("Análise do desempenho com base nos diferentes segmentos de clientes para direcionar estratégias de marketing e vendas.")
     
-    clientes_data = superstore_data['clientes']
-    segment_df = clientes_data['segmentPerformance']
-
-    # Gráfico de Pizza (Doughnut)
-    st.subheader("Distribuição do Lucro por Segmento")
-    fig = px.pie(segment_df, names='segment', values='profit', title="Lucro por Segmento de Cliente", hole=0.4)
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.subheader("Desempenho Detalhado por Segmento")
-    st.dataframe(estilizar_dataframe(segment_df.rename(columns={
-        'segment': 'Segmento', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
-    }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
-    
-# --- ABA 5: DESCONTOS ---
+    if 'Segment' in raw_superstore_data.columns:
+        segment_df = raw_superstore_data.groupby('Segment').agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum')
+        ).reset_index()
+        segment_df['profitMargin'] = (segment_df['profit'] / segment_df['sales']) * 100
+        
+        # Gráfico de Pizza (Doughnut)
+        st.subheader("Distribuição do Lucro por Segmento")
+        fig = px.pie(segment_df, names='Segment', values='profit', title="Lucro por Segmento de Cliente", hole=0.4)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.subheader("Desempenho Detalhado por Segmento")
+        st.dataframe(estilizar_dataframe(segment_df.rename(columns={
+            'Segment': 'Segmento', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro'
+        }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+    else:
+        st.warning("Coluna 'Segment' não encontrada para análise de clientes.")
+        
+# --- 10. ABA 5: DESCONTOS ---
 with tab5:
     st.header("Impacto dos Descontos")
     st.markdown("""
@@ -194,48 +269,82 @@ with tab5:
     revelando o impacto de diferentes faixas de desconto na margem de lucro.
     """)
 
-    descontos_data = superstore_data['descontos']
-    
-    # Matriz de Correlação
-    st.subheader("Matriz de Correlação")
-    corr_df = descontos_data['correlationMatrix']
-    st.dataframe(corr_df.style.background_gradient(cmap='coolwarm', axis=None).format("{:.2f}"))
-    
-    st.markdown("---")
+    if 'Discount' in raw_superstore_data.columns and 'Profit' in raw_superstore_data.columns and 'Sales' in raw_superstore_data.columns:
+        # Matriz de Correlação (apenas para colunas numéricas relevantes)
+        st.subheader("Matriz de Correlação")
+        # Seleciona apenas as colunas numéricas de interesse
+        corr_cols = ['Sales', 'Profit', 'Discount']
+        numeric_df = raw_superstore_data[corr_cols].dropna()
+        
+        if not numeric_df.empty:
+            corr_matrix = numeric_df.corr()
+            st.dataframe(corr_matrix.style.background_gradient(cmap='coolwarm', axis=None).format("{:.2f}"))
+        else:
+            st.warning("Não há dados numéricos suficientes para calcular a matriz de correlação.")
+        
+        st.markdown("---")
 
-    # Lucratividade por Faixa de Desconto
-    st.subheader("Lucratividade por Faixa de Desconto")
-    discount_df = descontos_data['discountImpact']
-    discount_df['Cor'] = ['green' if x >= 0 else 'red' for x in discount_df['profitMargin']]
-    
-    fig = px.bar(discount_df, x='range', y='profitMargin', 
-                 title="Margem de Lucro por Faixa de Desconto",
-                 labels={'range': 'Faixa de Desconto', 'profitMargin': 'Margem de Lucro (%)'})
-    fig.update_traces(marker_color=discount_df['Cor'])
-    st.plotly_chart(fig, use_container_width=True)
+        # Lucratividade por Faixa de Desconto
+        st.subheader("Lucratividade por Faixa de Desconto")
+        
+        # Cria faixas de desconto
+        bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        labels = [f'{int(b*100)}% - {int((b+0.1)*100)}%' for b in bins[:-1]]
+        # Último label para cobrir o máximo
+        labels[-1] = '90% - 100%' 
+        
+        raw_superstore_data['Discount_Range'] = pd.cut(raw_superstore_data['Discount'], bins=bins, labels=labels, right=False)
+        
+        discount_impact_df = raw_superstore_data.groupby('Discount_Range').agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum')
+        ).reset_index()
+        discount_impact_df['profitMargin'] = (discount_impact_df['profit'] / discount_impact_df['sales']) * 100
+        
+        discount_impact_df['Cor'] = ['green' if x >= 0 else 'red' for x in discount_impact_df['profitMargin']]
+        
+        fig = px.bar(discount_impact_df, x='Discount_Range', y='profitMargin', 
+                     title="Margem de Lucro por Faixa de Desconto",
+                     labels={'Discount_Range': 'Faixa de Desconto', 'profitMargin': 'Margem de Lucro (%)'})
+        fig.update_traces(marker_color=discount_impact_df['Cor'])
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Colunas 'Discount', 'Profit' ou 'Sales' não encontradas para análise de descontos.")
 
-
-# --- ABA 6: ENVIO ---
+# --- 11. ABA 6: ENVIO ---
 with tab6:
     st.header("Logística de Envio")
     st.markdown("Análise do desempenho dos diferentes modos de envio e o impacto do tempo de envio na operação.")
     
-    envio_data = superstore_data['envio']
-    ship_mode_df = envio_data['shipModePerformance']
+    if 'Ship Mode' in raw_superstore_data.columns and 'Order Date' in raw_superstore_data.columns and 'Ship Date' in raw_superstore_data.columns:
+        # Calcular tempo de envio (em dias)
+        raw_superstore_data['Shipping Time'] = (raw_superstore_data['Ship Date'] - raw_superstore_data['Order Date']).dt.days
 
-    st.subheader("Desempenho por Modo de Envio")
-    st.dataframe(estilizar_dataframe(ship_mode_df.rename(columns={
-        'mode': 'Modo de Envio', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro', 'avgTime': 'Tempo Médio (dias)'
-    }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
+        ship_mode_df = raw_superstore_data.groupby('Ship Mode').agg(
+            sales=('Sales', 'sum'),
+            profit=('Profit', 'sum'),
+            avgTime=('Shipping Time', 'mean')
+        ).reset_index()
+        ship_mode_df['profitMargin'] = (ship_mode_df['profit'] / ship_mode_df['sales']) * 100
+        
+        st.subheader("Desempenho por Modo de Envio")
+        st.dataframe(estilizar_dataframe(ship_mode_df.rename(columns={
+            'Ship Mode': 'Modo de Envio', 'sales': 'Vendas', 'profit': 'Lucro', 'profitMargin': 'Margem Lucro', 'avgTime': 'Tempo Médio (dias)'
+        }), ['Vendas', 'Lucro'], ['Margem Lucro']), use_container_width=True)
 
-    st.markdown("---")
-    
-    col1, col2 = st.columns(2)
-    col1.metric("Tempo Médio de Envio Geral", "3.96 dias")
-    col2.metric("Mediana do Tempo de Envio", "4.00 dias")
+        st.markdown("---")
+        
+        # KPIs de Tempo de Envio
+        avg_shipping_time = raw_superstore_data['Shipping Time'].mean()
+        median_shipping_time = raw_superstore_data['Shipping Time'].median()
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Tempo Médio de Envio Geral", f"{avg_shipping_time:.2f} dias")
+        col2.metric("Mediana do Tempo de Envio", f"{median_shipping_time:.2f} dias")
+    else:
+        st.warning("Colunas 'Ship Mode', 'Order Date' ou 'Ship Date' não encontradas para análise de envio.")
 
-
-# --- ABA 7: RECOMENDAÇÕES ---
+# --- 12. ABA 7: RECOMENDAÇÕES ---
 with tab7:
     st.header("Conclusões e Recomendações Estratégicas")
     st.markdown("""
@@ -243,6 +352,14 @@ with tab7:
     sugere ações estratégicas para otimizar o desempenho e aumentar a lucratividade.
     """)
     
-    recomendacoes = superstore_data['recomendacoes']
+    # Este array de recomendações é fixo no seu código original.
+    # Se fosse dinâmico, precisaria ser gerado a partir dos dados.
+    recomendacoes = [
+        "Foco em produtos de alta margem e categorias com bom desempenho.",
+        "Reavaliar a estratégia de preços/descontos para subcategorias com prejuízo (ex: 'Tables', 'Bookcases').",
+        "Investigar o motivo do baixo desempenho ou prejuízo em regiões/estados específicos.",
+        "Otimizar a logística de envio para reduzir custos e melhorar a satisfação do cliente.",
+        "Desenvolver campanhas de marketing direcionadas para segmentos de clientes com maior potencial de lucro."
+    ]
     for rec in recomendacoes:
         st.markdown(f"- {rec}")

@@ -25,7 +25,7 @@ def carregar_dados():
         # df = pd.DataFrame(dados)
 
         # Se for do Excel local (a abordagem que estamos seguindo):
-        df = pd.read_excel('data/dataset_superstore.xlsx', sheet_name='Sheet1') # AJUSTE AQUI O NOME DA ABA SE FOR DIFERENTE
+        df = pd.read_excel('data/dataset_superstore.xlsx') # AJUSTE AQUI O NOME DA ABA SE FOR DIFERENTE
 
         # CONVERSÃO DE TIPOS DE DADOS - CRUCIAL PARA CÁLCULOS!
         # Ajuste os nomes das colunas conforme seu Excel

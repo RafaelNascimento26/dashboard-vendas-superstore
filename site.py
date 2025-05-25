@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import gspread 
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")
+st.set_page_config(layout="wide", page_title="Dashboard Superstore")
 
 # --- 2. CARREGAMENTO DOS DADOS (APENAS UMA VEZ) ---
 @st.cache_data(ttl=10) # Armazena em cache para performance
@@ -35,12 +35,9 @@ def carregar_dados():
             df['Ship Date'] = pd.to_datetime(df['Ship Date'], errors='coerce')
 
         # Remover linhas com valores nulos que podem impactar cálculos
-        #df.dropna(subset=['Sales', 'Profit'], inplace=True)
+        df.dropna(subset=['Sales', 'Profit'], inplace=True)
 
         return df
-    except FileNotFoundError:
-        st.error("Erro: O arquivo 'data/dataset_superstore.xlsx' não foi encontrado. Certifique-se de que o arquivo está na pasta 'data' e foi adicionado ao Git.")
-        st.stop()
     except Exception as e:
         st.error(f"Erro ao carregar os dados: {e}")
         st.stop()
@@ -77,7 +74,7 @@ def estilizar_dataframe(df, colunas_moeda, colunas_percentual):
     return styled_df
 
 # --- 4. TÍTULO E INTRODUÇÃO ---
-st.title("Dashboard Interativo da Superstore")
+st.title("Dashboard Interativo Superstore")
 st.markdown("Uma análise visual dos principais insights do relatório, agora construída com Python, Streamlit e Plotly.")
 
 # --- 5. ABAS DE NAVEGAÇÃO ---

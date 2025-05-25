@@ -1,0 +1,7 @@
+# Ambiente virtual
+venv/
+__pycache__/
+
+# Arquivos de Sistema
+.DS_Store
+Thumbs.db

@@ -5,3 +5,6 @@ __pycache__/
 # Arquivos de Sistema
 .DS_Store
 Thumbs.db
+
+# Arquivos de Segredos do Streamlit
+.streamlit/

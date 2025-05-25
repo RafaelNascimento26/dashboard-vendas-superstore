@@ -10,12 +10,7 @@ st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")
 # --- 2. CARREGAMENTO DOS DADOS (APENAS UMA VEZ) ---
 @st.cache_data(ttl=10) # Armazena em cache para performance
 def carregar_dados():
-    """
-    Carrega os dados brutos da Superstore do arquivo Excel.
-    Certifique-se de que o arquivo 'dataset_superstore.xlsx' está em uma pasta 'data'.
-    Ajuste o 'sheet_name' para o nome da aba que contém seus dados brutos,
-    geralmente 'Sheet1' ou 'Orders'.
-    """
+   
     try:
 
         gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
@@ -25,7 +20,6 @@ def carregar_dados():
         df = pd.DataFrame(dados)
         
 
-        # CONVERSÃO DE TIPOS DE DADOS - CRUCIAL PARA CÁLCULOS!
         # Ajuste os nomes das colunas conforme seu Excel
         if 'Order Date' in df.columns:
             df['Order Date'] = pd.to_datetime(df['Order Date'])
@@ -41,7 +35,7 @@ def carregar_dados():
             df['Ship Date'] = pd.to_datetime(df['Ship Date'], errors='coerce')
 
         # Remover linhas com valores nulos que podem impactar cálculos
-        df.dropna(subset=['Sales', 'Profit'], inplace=True)
+        #df.dropna(subset=['Sales', 'Profit'], inplace=True)
 
         return df
     except FileNotFoundError:

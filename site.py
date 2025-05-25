@@ -70,6 +70,10 @@ with tab1:
     """)
     
     superstore_data = pd.read_excel('data/dataset_superstore.xlsx')
+    
+    st.write("Colunas disponíveis no superstore_data:")
+    st.write(superstore_data.columns)
+
     # KPIs
     kpi_data = superstore_data['visaoGeral']
     col1, col2, col3 = st.columns(3)

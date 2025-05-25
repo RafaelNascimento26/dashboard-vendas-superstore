@@ -23,6 +23,7 @@ def carregar_dados():
         worksheet = spreadsheet.sheet1
         dados = worksheet.get_all_records()
         df = pd.DataFrame(dados)
+        
 
         # CONVERSÃO DE TIPOS DE DADOS - CRUCIAL PARA CÁLCULOS!
         # Ajuste os nomes das colunas conforme seu Excel
@@ -52,7 +53,7 @@ def carregar_dados():
 
 # Carrega os dados brutos
 # Este será o DataFrame base para todos os seus cálculos e análises
-raw_superstore_data = carregar_dados()
+dataset_superstore = carregar_dados()
 
 # --- 3. FUNÇÕES AUXILIARES ---
 def formatar_numero(valor, prefixo='R$'):

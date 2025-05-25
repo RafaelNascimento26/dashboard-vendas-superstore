@@ -2,7 +2,7 @@
 
 ---
 
-### **Autor:** [Rafael Fabiano do Nascimento]
+### **Analista:** [Rafael Fabiano do Nascimento]
 ### **Link para a Aplicação:** [https://dashboard-vendas-superstore.streamlit.app/]
 
 ---

@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")
 
 # --- 2. CARREGAMENTO DOS DADOS (APENAS UMA VEZ) ---
-@st.cache_data(ttl=600) # Armazena em cache para performance
+@st.cache_data(ttl=10) # Armazena em cache para performance
 def carregar_dados():
     """
     Carrega os dados brutos da Superstore do arquivo Excel.

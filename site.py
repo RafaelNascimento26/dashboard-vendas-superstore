@@ -2,30 +2,31 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from st_gsheets_connection import GSheetsConnection
+import gspread
 
 # Configuração da página
 st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")
 
-# --- DADOS ---
-# Os dados são os mesmos do projeto original, agora em estruturas de dados do Python/Pandas
-
-# --- Conexão com o Google Sheets ---
-# Cria a conexão. O Streamlit gerencia a autorização.
-# Você pode precisar configurar "secrets" no Streamlit Cloud pela primeira vez.
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-@st.cache_data(ttl=600) # Adiciona cache de 10 minutos (600 segundos)
+@st.cache_data(ttl=600)
 def carregar_dados():
-    # Lê os dados da sua planilha. Especifique o nome da planilha e da aba.
-    df = conn.read(
-        worksheet="Página1", # Nome da aba da sua planilha
-        usecols=list(range(21)) # Exemplo: ler as primeiras 21 colunas
-    )
+    # Autoriza o gspread com as credenciais guardadas nos Secrets do Streamlit
+    # O st.secrets já entende o formato do JSON que você configurou.
+    gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
+
+    # Abre a planilha pelo nome que está nos seus Secrets e seleciona a primeira aba
+    spreadsheet = gc.open(st.secrets["connections"]["gsheets"]["spreadsheet"])
+    worksheet = spreadsheet.sheet1 # .sheet1 pega a primeira aba
+
+    # Pega todos os valores da planilha e converte para um DataFrame do Pandas
+    dados = worksheet.get_all_records()
+    df = pd.DataFrame(dados)
+
     return df
 
+# O resto do seu código continua igual
 # Carrega os dados
 dataset_superstore = carregar_dados()
+
 
 # --- FUNÇÕES AUXILIARES ---
 def formatar_numero(valor, prefixo='R$'):

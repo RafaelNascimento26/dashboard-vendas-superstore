@@ -2,4 +2,5 @@ streamlit
 pandas
 plotly
 matplotlib
-st-gsheets-connection
+gspread
+google-auth-oauthlib

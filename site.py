@@ -69,7 +69,7 @@ with tab1:
     lucro total e margem de lucro geral. Além disso, exploramos as tendências de vendas e lucro ao longo dos anos.
     """)
     
-    superstore_data = pd.read_excel('"C:\\Users\\DELL\\Desktop\\Rafael\\Trabalhos_Rafael\\dataset_superstore.xlsx"', sheet_name='Sheet1')
+    superstore_data = pd.read_excel('data/dataset_superstore.xlsx', sheet_name='Sheet1')
     # KPIs
     kpi_data = superstore_data['visaoGeral']
     col1, col2, col3 = st.columns(3)

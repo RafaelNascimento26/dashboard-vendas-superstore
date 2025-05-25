@@ -2,97 +2,30 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from st_gsheets_connection import GSheetsConnection
 
 # Configuração da página
 st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")
 
 # --- DADOS ---
 # Os dados são os mesmos do projeto original, agora em estruturas de dados do Python/Pandas
-superstore_data = {
-    'visaoGeral': {
-        'totalSales': 2297200.86,
-        'totalProfit': 286397.02,
-        'overallProfitMargin': 12.47,
-        'yearlyPerformance': pd.DataFrame({
-            "Ano": ["2014", "2015", "2016", "2017"],
-            "Vendas": [484247, 470532, 609205, 733215],
-            "Lucro": [49543, 48795, 62026, 93439]
-        }),
-    },
-    'produtos': {
-        'categoryPerformance': pd.DataFrame([
-            { 'category': "Technology", 'sales': 836154, 'profit': 145454, 'profitMargin': 17.39 },
-            { 'category': "Office Supplies", 'sales': 719047, 'profit': 122490, 'profitMargin': 17.03 },
-            { 'category': "Furniture", 'sales': 741999, 'profit': 18451, 'profitMargin': 2.49 }
-        ]),
-        'subCategoryProfit': pd.DataFrame([
-            { 'subCategory': "Copiers", 'profit': 55617 },
-            { 'subCategory': "Phones", 'profit': 44515 },
-            { 'subCategory': "Paper", 'profit': 34053 },
-            { 'subCategory': "Accessories", 'profit': 41936 },
-            { 'subCategory': "Binders", 'profit': 30221 },
-            { 'subCategory': "Tables", 'profit': -17725 },
-            { 'subCategory': "Bookcases", 'profit': -3472 },
-            { 'subCategory': "Supplies", 'profit': -1189 }
-        ]),
-        'lossSubCategoryTable': pd.DataFrame([
-             { 'category': "Furniture", 'subCategory': "Tables", 'sales': 206965, 'profit': -17725, 'profitMargin': -8.56 },
-             { 'category': "Furniture", 'subCategory': "Bookcases", 'sales': 114879, 'profit': -3472, 'profitMargin': -3.02 },
-             { 'category': "Office Supplies", 'subCategory': "Supplies", 'sales': 46673, 'profit': -1189, 'profitMargin': -2.55 }
-        ]),
-    },
-    'geografica': {
-        'regionPerformance': pd.DataFrame([
-            { 'region': "West", 'sales': 725457, 'profit': 108418, 'profitMargin': 14.94 },
-            { 'region': "East", 'sales': 678781, 'profit': 91522, 'profitMargin': 13.48 },
-            { 'region': "Central", 'sales': 501239, 'profit': 39706, 'profitMargin': 7.92 },
-            { 'region': "South", 'sales': 391721, 'profit': 46749, 'profitMargin': 11.93 }
-        ]),
-        'lossStates': pd.DataFrame([
-            { 'state': "Texas", 'sales': 170188, 'profit': -25729, 'profitMargin': -15.12 },
-            { 'state': "Pennsylvania", 'sales': 116511, 'profit': -15559, 'profitMargin': -13.35 },
-            { 'state': "Illinois", 'sales': 80166, 'profit': -12607, 'profitMargin': -15.72 }
-        ])
-    },
-    'clientes': {
-        'segmentPerformance': pd.DataFrame([
-            { 'segment': "Consumer", 'sales': 1161401, 'profit': 134119, 'profitMargin': 11.55 },
-            { 'segment': "Corporate", 'sales': 706146, 'profit': 91979, 'profitMargin': 13.03 },
-            { 'segment': "Home Office", 'sales': 429653, 'profit': 60298, 'profitMargin': 14.03 }
-        ])
-    },
-    'descontos': {
-        'correlationMatrix': pd.DataFrame([
-            { 'Métrica': "Sales", 'Sales': 1.00, 'Quantity': 0.20, 'Discount': 0.00, 'Profit': 0.48 },
-            { 'Métrica': "Quantity", 'Sales': 0.20, 'Quantity': 1.00, 'Discount': 0.01, 'Profit': 0.07 },
-            { 'Métrica': "Discount", 'Sales': 0.00, 'Quantity': 0.01, 'Discount': 1.00, 'Profit': -0.22 },
-            { 'Métrica': "Profit", 'Sales': 0.48, 'Quantity': 0.07, 'Discount': -0.22, 'Profit': 1.00 }
-        ]).set_index('Métrica'),
-        'discountImpact': pd.DataFrame([
-            { 'range': "0%", 'profitMargin': 20.00 },
-            { 'range': "1-20%", 'profitMargin': 12.50 },
-            { 'range': "21-40%", 'profitMargin': -3.33 },
-            { 'range': "41-60%", 'profitMargin': -33.33 },
-            { 'range': "61-80%", 'profitMargin': -80.00 }
-        ])
-    },
-    'envio': {
-        'shipModePerformance': pd.DataFrame([
-            { 'mode': "Standard Class", 'sales': 1358216, 'profit': 164088, 'profitMargin': 12.08, 'avgTime': 4.96},
-            { 'mode': "Second Class", 'sales': 459193, 'profit': 57446, 'profitMargin': 12.51, 'avgTime': 3.83},
-            { 'mode': "First Class", 'sales': 351428, 'profit': 48969, 'profitMargin': 13.93, 'avgTime': 2.60},
-            { 'mode': "Same Day", 'sales': 128363, 'profit': 15893, 'profitMargin': 12.38, 'avgTime': 0.94}
-        ])
-    },
-    'recomendacoes': [
-        "**Foco na Lucratividade, Não Apenas Vendas:** Priorizar estratégias que aumentem a margem de lucro. Revisar precificação, custos e política de descontos para itens/áreas problemáticas.",
-        "**Gestão Estratégica de Descontos:** Implementar uma política de descontos mais inteligente. Evitar descontos agressivos generalizados e focar em promoções direcionadas que não comprometam a margem.",
-        "**Otimização Geográfica:** Investigar a fundo as causas do baixo desempenho em regiões/estados específicos. Adaptar estratégias de marketing e vendas regionalmente.",
-        "**Entender e Engajar Segmentos de Clientes:** Desenvolver personas para cada segmento e personalizar as estratégias de marketing, comunicação e oferta de produtos.",
-        "**Eficiência Logística e de Envio:** Monitorar continuamente os tempos de envio. Otimizar processos logísticos para reduzir prazos e custos.",
-        "**Monitoramento Contínuo:** Implementar dashboards e relatórios regulares para acompanhar os KPIs identificados."
-    ]
-}
+
+# --- Conexão com o Google Sheets ---
+# Cria a conexão. O Streamlit gerencia a autorização.
+# Você pode precisar configurar "secrets" no Streamlit Cloud pela primeira vez.
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+@st.cache_data(ttl=600) # Adiciona cache de 10 minutos (600 segundos)
+def carregar_dados():
+    # Lê os dados da sua planilha. Especifique o nome da planilha e da aba.
+    df = conn.read(
+        worksheet="Página1", # Nome da aba da sua planilha
+        usecols=list(range(21)) # Exemplo: ler as primeiras 21 colunas
+    )
+    return df
+
+# Carrega os dados
+dataset_superstore = carregar_dados()
 
 # --- FUNÇÕES AUXILIARES ---
 def formatar_numero(valor, prefixo='R$'):

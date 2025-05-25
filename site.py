@@ -100,8 +100,8 @@ with tab1:
     """)
     
     # KPIs Calculados a partir dos dados brutos
-    total_sales = raw_superstore_data['Sales'].sum()
-    total_profit = raw_superstore_data['Profit'].sum()
+    total_sales = dataset_superstore['Sales'].sum()
+    total_profit = dataset_superstore['Profit'].sum()
     overall_profit_margin = (total_profit / total_sales) * 100 if total_sales != 0 else 0
 
     col1, col2, col3 = st.columns(3)
@@ -115,8 +115,8 @@ with tab1:
     st.subheader("Desempenho Anual")
     
     # Crie a coluna 'Ano' a partir da 'Order Date'
-    if 'Order Date' in raw_superstore_data.columns:
-        yearly_df = raw_superstore_data.groupby(raw_superstore_data['Order Date'].dt.year).agg(
+    if 'Order Date' in dataset_superstore.columns:
+        yearly_df = dataset_superstore.groupby(dataset_superstore['Order Date'].dt.year).agg(
             Vendas=('Sales', 'sum'),
             Lucro=('Profit', 'sum')
         ).reset_index()
@@ -142,8 +142,8 @@ with tab2:
     
     # Desempenho por Categoria
     st.subheader("Desempenho por Categoria")
-    if 'Category' in raw_superstore_data.columns:
-        category_df = raw_superstore_data.groupby('Category').agg(
+    if 'Category' in dataset_superstore.columns:
+        category_df = dataset_superstore.groupby('Category').agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum')
         ).reset_index()
@@ -164,8 +164,8 @@ with tab2:
 
     # Lucro por Subcategoria
     st.subheader("Lucro por Subcategoria (Destaques)")
-    if 'Sub-Category' in raw_superstore_data.columns:
-        subcategory_profit_df = raw_superstore_data.groupby('Sub-Category').agg(
+    if 'Sub-Category' in dataset_superstore.columns:
+        subcategory_profit_df = dataset_superstore.groupby('Sub-Category').agg(
             profit=('Profit', 'sum')
         ).reset_index()
         subcategory_profit_df['Cor'] = ['green' if x >= 0 else 'red' for x in subcategory_profit_df['profit']]
@@ -179,7 +179,7 @@ with tab2:
 
         st.subheader("Subcategorias com Prejuízo")
         # Filtra subcategorias com lucro negativo e calcula o desempenho
-        loss_subcategories_df = raw_superstore_data[raw_superstore_data['Profit'] < 0].groupby(['Category', 'Sub-Category']).agg(
+        loss_subcategories_df = dataset_superstore[dataset_superstore['Profit'] < 0].groupby(['Category', 'Sub-Category']).agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum')
         ).reset_index()
@@ -201,8 +201,8 @@ with tab3:
 
     # Desempenho por Região
     st.subheader("Desempenho por Região")
-    if 'Region' in raw_superstore_data.columns:
-        region_df = raw_superstore_data.groupby('Region').agg(
+    if 'Region' in dataset_superstore.columns:
+        region_df = dataset_superstore.groupby('Region').agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum')
         ).reset_index()
@@ -222,8 +222,8 @@ with tab3:
 
     # Estados com Prejuízo
     st.subheader("Estados com Prejuízo")
-    if 'State' in raw_superstore_data.columns:
-        loss_states_df = raw_superstore_data[raw_superstore_data['Profit'] < 0].groupby('State').agg(
+    if 'State' in dataset_superstore.columns:
+        loss_states_df = dataset_superstore[dataset_superstore['Profit'] < 0].groupby('State').agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum')
         ).reset_index()
@@ -240,8 +240,8 @@ with tab4:
     st.header("Análise de Clientes")
     st.markdown("Análise do desempenho com base nos diferentes segmentos de clientes para direcionar estratégias de marketing e vendas.")
     
-    if 'Segment' in raw_superstore_data.columns:
-        segment_df = raw_superstore_data.groupby('Segment').agg(
+    if 'Segment' in dataset_superstore.columns:
+        segment_df = dataset_superstore.groupby('Segment').agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum')
         ).reset_index()
@@ -267,12 +267,12 @@ with tab5:
     revelando o impacto de diferentes faixas de desconto na margem de lucro.
     """)
 
-    if 'Discount' in raw_superstore_data.columns and 'Profit' in raw_superstore_data.columns and 'Sales' in raw_superstore_data.columns:
+    if 'Discount' in dataset_superstore.columns and 'Profit' in dataset_superstore.columns and 'Sales' in dataset_superstore.columns:
         # Matriz de Correlação (apenas para colunas numéricas relevantes)
         st.subheader("Matriz de Correlação")
         # Seleciona apenas as colunas numéricas de interesse
         corr_cols = ['Sales', 'Profit', 'Discount']
-        numeric_df = raw_superstore_data[corr_cols].dropna()
+        numeric_df = dataset_superstore[corr_cols].dropna()
         
         if not numeric_df.empty:
             corr_matrix = numeric_df.corr()
@@ -291,9 +291,9 @@ with tab5:
         # Último label para cobrir o máximo
         labels[-1] = '90% - 100%' 
         
-        raw_superstore_data['Discount_Range'] = pd.cut(raw_superstore_data['Discount'], bins=bins, labels=labels, right=False)
+        dataset_superstore['Discount_Range'] = pd.cut(dataset_superstore['Discount'], bins=bins, labels=labels, right=False)
         
-        discount_impact_df = raw_superstore_data.groupby('Discount_Range').agg(
+        discount_impact_df = dataset_superstore.groupby('Discount_Range').agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum')
         ).reset_index()
@@ -314,11 +314,11 @@ with tab6:
     st.header("Logística de Envio")
     st.markdown("Análise do desempenho dos diferentes modos de envio e o impacto do tempo de envio na operação.")
     
-    if 'Ship Mode' in raw_superstore_data.columns and 'Order Date' in raw_superstore_data.columns and 'Ship Date' in raw_superstore_data.columns:
+    if 'Ship Mode' in dataset_superstore.columns and 'Order Date' in dataset_superstore.columns and 'Ship Date' in dataset_superstore.columns:
         # Calcular tempo de envio (em dias)
-        raw_superstore_data['Shipping Time'] = (raw_superstore_data['Ship Date'] - raw_superstore_data['Order Date']).dt.days
+        dataset_superstore['Shipping Time'] = (dataset_superstore['Ship Date'] - dataset_superstore['Order Date']).dt.days
 
-        ship_mode_df = raw_superstore_data.groupby('Ship Mode').agg(
+        ship_mode_df = dataset_superstore.groupby('Ship Mode').agg(
             sales=('Sales', 'sum'),
             profit=('Profit', 'sum'),
             avgTime=('Shipping Time', 'mean')
@@ -333,8 +333,8 @@ with tab6:
         st.markdown("---")
         
         # KPIs de Tempo de Envio
-        avg_shipping_time = raw_superstore_data['Shipping Time'].mean()
-        median_shipping_time = raw_superstore_data['Shipping Time'].median()
+        avg_shipping_time = dataset_superstore['Shipping Time'].mean()
+        median_shipping_time = dataset_superstore['Shipping Time'].median()
         
         col1, col2 = st.columns(2)
         col1.metric("Tempo Médio de Envio Geral", f"{avg_shipping_time:.2f} dias")

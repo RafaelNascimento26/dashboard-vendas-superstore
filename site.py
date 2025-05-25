@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-# import gspread # Mantenho comentado. Descomente se for usar Google Sheets como fonte principal
+import gspread 
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Dashboard de Análise Superstore")

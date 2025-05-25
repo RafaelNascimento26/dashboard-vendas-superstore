@@ -17,15 +17,12 @@ def carregar_dados():
     geralmente 'Sheet1' ou 'Orders'.
     """
     try:
-        # Se você estivesse usando Google Sheets:
-        # gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
-        # spreadsheet = gc.open(st.secrets["connections"]["gsheets"]["spreadsheet"])
-        # worksheet = spreadsheet.sheet1
-        # dados = worksheet.get_all_records()
-        # df = pd.DataFrame(dados)
 
-        # Se for do Excel local (a abordagem que estamos seguindo):
-        df = pd.read_excel('data/dataset_superstore.xlsx', sheet_name='Sheet1') # AJUSTE AQUI O NOME DA ABA SE FOR DIFERENTE
+        gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
+        spreadsheet = gc.open(st.secrets["connections"]["gsheets"]["spreadsheet"])
+        worksheet = spreadsheet.sheet1
+        dados = worksheet.get_all_records()
+        df = pd.DataFrame(dados)
 
         # CONVERSÃO DE TIPOS DE DADOS - CRUCIAL PARA CÁLCULOS!
         # Ajuste os nomes das colunas conforme seu Excel

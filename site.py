@@ -20,7 +20,7 @@ def carregar_dados():
 
         gc = gspread.service_account_from_dict(st.secrets["connections"]["gsheets"])
         spreadsheet = gc.open(st.secrets["connections"]["gsheets"]["spreadsheet"])
-        worksheet = spreadsheet
+        worksheet = spreadsheet.sheet1
         dados = worksheet.get_all_records()
         df = pd.DataFrame(dados)
 

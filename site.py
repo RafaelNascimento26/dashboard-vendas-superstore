@@ -7,8 +7,8 @@ import gspread
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Dashboard Superstore")
 
-# --- 2. CARREGAMENTO DOS DADOS (APENAS UMA VEZ) ---
-@st.cache_data(ttl=10) # Armazena em cache para performance
+# --- 2. CARREGAMENTO DOS DADOS  ---
+@st.cache_data(ttl=10) 
 def carregar_dados():
    
     try:
@@ -20,7 +20,6 @@ def carregar_dados():
         df = pd.DataFrame(dados)
         
 
-        # Ajuste os nomes das colunas conforme seu Excel
         if 'Order Date' in df.columns:
             df['Order Date'] = pd.to_datetime(df['Order Date'])
         if 'Sales' in df.columns:
@@ -29,12 +28,11 @@ def carregar_dados():
             df['Profit'] = pd.to_numeric(df['Profit'], errors='coerce')
         if 'Discount' in df.columns:
             df['Discount'] = pd.to_numeric(df['Discount'], errors='coerce')
-        if 'Shipping Cost' in df.columns: # Exemplo, se você tiver uma coluna de custo de envio
+        if 'Shipping Cost' in df.columns: 
             df['Shipping Cost'] = pd.to_numeric(df['Shipping Cost'], errors='coerce')
         if 'Ship Date' in df.columns:
             df['Ship Date'] = pd.to_datetime(df['Ship Date'], errors='coerce')
 
-        # Remover linhas com valores nulos que podem impactar cálculos
         df.dropna(subset=['Sales', 'Profit'], inplace=True)
 
         return df
@@ -42,8 +40,6 @@ def carregar_dados():
         st.error(f"Erro ao carregar os dados: {e}")
         st.stop()
 
-# Carrega os dados brutos
-# Este será o DataFrame base para todos os seus cálculos e análises
 dataset_superstore = carregar_dados()
 
 # --- 3. FUNÇÕES AUXILIARES ---
@@ -53,7 +49,6 @@ def formatar_numero(valor, prefixo='R$'):
 def formatar_percentual(valor):
     return f"{valor:.2f}%"
 
-# Função para estilizar DataFrames
 def estilizar_dataframe(df, colunas_moeda, colunas_percentual):
     format_dict = {}
     for col in colunas_moeda:
@@ -65,7 +60,7 @@ def estilizar_dataframe(df, colunas_moeda, colunas_percentual):
 
     styled_df = df.style.format(format_dict)
     
-    # Aplica formatação condicional para lucro e margem de lucro (se as colunas existirem)
+    # Aplica formatação condicional para lucro e margem de lucro 
     if 'Lucro' in df.columns:
         styled_df = styled_df.applymap(lambda v: 'color: red' if v < 0 else 'color: green', subset=['Lucro'])
     if 'Margem Lucro' in df.columns: # Ajustado para o nome que você usará no DataFrame
@@ -341,8 +336,6 @@ with tab7:
     sugere ações estratégicas para otimizar o desempenho e aumentar a lucratividade.
     """)
     
-    # Este array de recomendações é fixo no seu código original.
-    # Se fosse dinâmico, precisaria ser gerado a partir dos dados.
     recomendacoes = [
         "Foco em produtos de alta margem e categorias com bom desempenho.",
         "Reavaliar a estratégia de preços/descontos para subcategorias com prejuízo (ex: 'Tables', 'Bookcases').",
